@@ -1,0 +1,41 @@
+variables:
+- name: mavenPOMFile  # Renamed for clarity without 'BuildParameters'
+  value: 'pom.xml'
+
+name: 'build-$(Build.BuildId)'  # Changed for a more descriptive build naming
+
+resources:
+  repositories:
+  - repository: self
+    type: git
+    ref: refs/heads/main  # 'ref' kept as 'main' but consider parameterization for feature branching
+
+jobs:
+- job: Build
+  displayName: 'Build Job'  # Renamed for clarity
+  pool:
+    vmImage: 'ubuntu-20.04'  # Specify VM image to avoid surprises with 'latest'
+
+  steps:
+  - checkout: self
+    clean: true
+    fetchDepth: 1  # No need for history or tags for build, minimizes checkout time
+
+  - task: Maven@3
+    displayName: 'Maven build'
+    inputs:
+      mavenPOMFile: $(mavenPOMFile)
+      goals: 'clean install'  # Specify goals for Maven execution
+
+  - task: CopyFiles@2
+    displayName: 'Copy Files to Artifact Staging'
+    inputs:
+      SourceFolder: $(Build.SourcesDirectory)
+      Contents: '**/*.jar'
+      TargetFolder: $(Build.ArtifactStagingDirectory)
+
+  - task: PublishPipelineArtifact@1  # Changed to PublishPipelineArtifact
+    displayName: 'Publish Artifact'
+    inputs:
+      targetPath: $(Build.ArtifactStagingDirectory)
+      artifact: 'drop'
